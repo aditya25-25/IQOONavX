@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app } from '../app';
+import { app } from '../serverApp';
 
 describe('Health Check Endpoint', () => {
   it('GET /health should return 200 with service info', async () => {

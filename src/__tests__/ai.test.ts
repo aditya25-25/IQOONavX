@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app } from '../app';
+import { app } from '../serverApp';
 
 describe('AI Navigation Assistant & Geocoding Endpoints', () => {
   it('POST /api/v1/ai/navigation-assistant should return AI response payload', async () => {

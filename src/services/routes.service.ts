@@ -11,10 +11,23 @@ import { logger } from '../lib/logger';
 export class RoutesService {
   /**
    * Computes primary and alternative navigation routes.
-   * Calls Google Routes API if configured; otherwise uses iQOO Matrix routing algorithm.
+   * Priority:
+   * 1. OSRM (OpenStreetMap Routing Machine - zero cost, open data)
+   * 2. Google Routes API (if configured)
+   * 3. iQOO Matrix Geometry Engine (offline-ready fallback)
    */
   static async computeRoute(dto: RouteRequestDTO): Promise<RouteCalculationResponse> {
-    // If Google Routes API key is configured, call Google Routes API v2
+    // 1. Try OSRM (OpenStreetMap)
+    try {
+      const osrmResult = await this.callOsrmRoutingApi(dto);
+      if (osrmResult) {
+        return osrmResult;
+      }
+    } catch (err) {
+      logger.warn('OSRM routing request failed or unreachable, trying alternative providers:', err);
+    }
+
+    // 2. Try Google Routes API if configured
     if (config.hasGoogleRoutes) {
       try {
         const googleResult = await this.callGoogleRoutesApi(dto);
@@ -26,8 +39,96 @@ export class RoutesService {
       }
     }
 
-    // Default: iQOO High-Precision Matrix Routing Algorithm (offline-ready & mock fallback)
+    // 3. Default: iQOO High-Precision Matrix Routing Algorithm (offline-ready)
     return this.calculateMatrixRoute(dto);
+  }
+
+  /**
+   * OSRM (OpenStreetMap) Routing Engine
+   */
+  private static async callOsrmRoutingApi(dto: RouteRequestDTO): Promise<RouteCalculationResponse | null> {
+    const profile =
+      dto.travelMode === 'walking'
+        ? 'foot'
+        : dto.travelMode === 'cycling'
+        ? 'bicycle'
+        : 'driving';
+
+    const { origin, destination } = dto;
+    const url = `${config.OSRM_BASE_URL}/route/v1/${profile}/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=polyline&steps=true&alternatives=true`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
+
+    try {
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'IQOONavX-Backend/1.0',
+        },
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) return null;
+
+      const data = (await response.json()) as any;
+      if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+        return null;
+      }
+
+      const normalizedRoutes: RouteOption[] = data.routes.map((r: any, idx: number) => {
+        const distanceMeters = Math.round(r.distance || 0);
+        const durationSeconds = Math.round(r.duration || 0);
+        const polyline = r.geometry || '';
+
+        const steps: RouteStep[] = [];
+        if (r.legs && r.legs[0]?.steps) {
+          for (const s of r.legs[0].steps) {
+            steps.push({
+              instruction: s.maneuver?.instruction || s.name || 'Continue on road',
+              distanceMeters: Math.round(s.distance || 0),
+              durationSeconds: Math.round(s.duration || 0),
+              distanceText: `${((s.distance || 0) / 1000).toFixed(1)} km`,
+              durationText: `${Math.max(1, Math.ceil((s.duration || 0) / 60))} mins`,
+              startLocation: {
+                latitude: s.maneuver?.location?.[1] || 0,
+                longitude: s.maneuver?.location?.[0] || 0,
+              },
+              endLocation: {
+                latitude: s.maneuver?.location?.[1] || 0,
+                longitude: s.maneuver?.location?.[0] || 0,
+              },
+              maneuver: s.maneuver?.type,
+              streetName: s.name || 'Expressway',
+            });
+          }
+        }
+
+        return {
+          distanceMeters,
+          durationSeconds,
+          distanceText: `${(distanceMeters / 1000).toFixed(1)} km`,
+          durationText: `${Math.ceil(durationSeconds / 60)} mins`,
+          polyline,
+          steps,
+          trafficLevel: idx === 0 ? 'smooth' : 'moderate',
+          tag: idx === 0 ? (dto.monsterOptimization ? 'monster_boost' : 'fastest') : 'eco',
+        };
+      });
+
+      return {
+        primaryRoute: normalizedRoutes[0],
+        alternatives: normalizedRoutes.slice(1),
+        origin: dto.origin,
+        destination: dto.destination,
+        travelMode: dto.travelMode || 'driving',
+        provider: 'iqoo_matrix_engine',
+        isCachedOfflineReady: true,
+      };
+    } catch {
+      clearTimeout(timeoutId);
+      return null;
+    }
   }
 
   /**

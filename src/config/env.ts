@@ -13,8 +13,13 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().optional(),
   SUPABASE_PUBLISHABLE_KEY: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  SUPABASE_SECRET_KEY: z.string().optional(),
 
-  // Google Maps / Routing APIs
+  // OpenStreetMap Services (OSRM & Nominatim)
+  OSRM_BASE_URL: z.string().default('https://router.project-osrm.org'),
+  NOMINATIM_BASE_URL: z.string().default('https://nominatim.openstreetmap.org'),
+
+  // Google Maps / Routing APIs (Optional)
   GOOGLE_MAPS_API_KEY: z.string().optional(),
   GOOGLE_ROUTES_API_KEY: z.string().optional(),
   GOOGLE_PLACES_API_KEY: z.string().optional(),
@@ -39,8 +44,9 @@ const parseEnv = () => {
 
   const env = result.data;
 
-  // Verification helper for external service keys without leaking values
-  const hasSupabase = Boolean(env.SUPABASE_URL && (env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY));
+  // Supabase key normalization
+  const supabaseKey = env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_PUBLISHABLE_KEY;
+  const hasSupabase = Boolean(env.SUPABASE_URL && supabaseKey);
   const hasGoogleRoutes = Boolean(env.GOOGLE_ROUTES_API_KEY || env.GOOGLE_MAPS_API_KEY);
   const hasGooglePlaces = Boolean(env.GOOGLE_PLACES_API_KEY || env.GOOGLE_MAPS_API_KEY);
   const hasGoogleGeocoding = Boolean(env.GOOGLE_GEOCODING_API_KEY || env.GOOGLE_MAPS_API_KEY);
@@ -48,6 +54,7 @@ const parseEnv = () => {
 
   return {
     ...env,
+    SUPABASE_SERVICE_ROLE_KEY: env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY,
     hasSupabase,
     hasGoogleRoutes,
     hasGooglePlaces,

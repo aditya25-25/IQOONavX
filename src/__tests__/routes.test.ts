@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app } from '../app';
+import { app } from '../serverApp';
 
 describe('Navigation & Recent Routes Endpoints', () => {
   const token = 'Bearer mock-token-pilot-001';

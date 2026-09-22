@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app } from '../app';
+import { app } from '../serverApp';
 
 describe('Auth Endpoints', () => {
   it('GET /api/v1/auth/me without token should return 401 Unauthorized', async () => {

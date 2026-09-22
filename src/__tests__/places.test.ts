@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app } from '../app';
+import { app } from '../serverApp';
 
 describe('Saved Places & Places Search Endpoints', () => {
   const token = 'Bearer mock-token-pilot-001';
