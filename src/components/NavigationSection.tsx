@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNav } from '../context/NavContext';
-import { MOCK_ROUTES } from '../data/mockNavigation';
 import {
   Route,
   Navigation,
@@ -13,11 +12,13 @@ import {
   ShieldCheck,
   Volume2,
   VolumeX,
+  Loader2,
 } from 'lucide-react';
 
 export const NavigationSection: React.FC = () => {
   const {
     activeRoute,
+    availableRoutes,
     setActiveRoute,
     startNavigation,
     navState,
@@ -25,6 +26,8 @@ export const NavigationSection: React.FC = () => {
     toggleVoiceGuidance,
     setIsRouteDetailsOpen,
     setIsFullNavAppOpen,
+    isCalculatingRoute,
+    calculateBackendRoute,
   } = useNav();
 
   const getBadgeIcon = (badge?: string) => {
@@ -36,6 +39,15 @@ export const NavigationSection: React.FC = () => {
       default:
         return <Route className="w-3.5 h-3.5 text-[#00F0FF]" />;
     }
+  };
+
+  const handleRecalculate = () => {
+    calculateBackendRoute({
+      origin: { latitude: 28.4595, longitude: 77.0266, name: 'Apex Cyber Heights' },
+      destination: { latitude: 28.5355, longitude: 77.3910, name: 'iQOO Monster Esports Arena' },
+      travelMode: 'monster',
+      monsterOptimization: true,
+    });
   };
 
   return (
@@ -57,6 +69,20 @@ export const NavigationSection: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRecalculate}
+              disabled={isCalculatingRoute}
+              className="px-3 py-1.5 rounded-xl bg-[#161922] hover:bg-white/10 border border-white/10 text-xs font-mono text-[#FFC800] transition-colors flex items-center gap-1.5"
+            >
+              {isCalculatingRoute ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5" />
+              )}
+              <span>Calculate Live Route</span>
+            </button>
+
             <button
               type="button"
               onClick={toggleVoiceGuidance}
@@ -82,7 +108,7 @@ export const NavigationSection: React.FC = () => {
 
         {/* Route Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {MOCK_ROUTES.map((route) => {
+          {availableRoutes.map((route) => {
             const isSelected = activeRoute.id === route.id;
 
             return (

@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { Modal } from '../common/Modal';
 import { useAuth } from '../../context/AuthContext';
 import { Lock, Mail, Eye, EyeOff, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { isSupabaseConfigured } from '../../lib/supabase';
 
 export const SignInModal: React.FC = () => {
-  const { isAuthModalOpen, authModalType, closeAuthModal, openAuthModal, signInMock } = useAuth();
+  const { isAuthModalOpen, authModalType, closeAuthModal, openAuthModal, signIn } = useAuth();
   const isOpen = isAuthModalOpen && authModalType === 'signin';
 
   const [email, setEmail] = useState('');
@@ -29,10 +30,14 @@ export const SignInModal: React.FC = () => {
 
     setLoading(true);
     try {
-      await signInMock(email);
-      setSuccess(true);
-    } catch {
-      setError('Failed to sign in. Please retry.');
+      const res = await signIn(email, password);
+      if (res.success) {
+        setSuccess(true);
+      } else {
+        setError(res.error || 'Failed to sign in. Please retry.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in. Please retry.');
     } finally {
       setLoading(false);
     }
@@ -52,11 +57,11 @@ export const SignInModal: React.FC = () => {
       maxWidth="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Prototype Mode Notice */}
+        {/* Auth Notice */}
         <div className="p-3 rounded-xl bg-[#FFC800]/10 border border-[#FFC800]/25 flex items-start gap-2.5 text-xs text-[#FFC800]">
           <Sparkles className="w-4 h-4 shrink-0 mt-0.5 text-[#FFC800]" />
           <div>
-            <span className="font-bold">Prototype Mode:</span> Authentication is prepared for Supabase connection. Any mock email will activate the demo pilot session.
+            <span className="font-bold">Supabase Auth:</span> {isSupabaseConfigured() ? 'Connected to live Supabase Authentication.' : 'Running in local pilot simulation mode.'}
           </div>
         </div>
 
@@ -100,7 +105,7 @@ export const SignInModal: React.FC = () => {
             </label>
             <button
               type="button"
-              onClick={() => alert('Demo prototype: Use any password or click "Quick Fill Demo".')}
+              onClick={() => setError('Please use your Supabase account password or click "Quick Fill Demo".')}
               className="text-xs text-[#FFC800] hover:underline"
             >
               Forgot password?
