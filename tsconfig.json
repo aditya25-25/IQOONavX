@@ -11,11 +11,13 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": false,
-    "types": ["node", "jest"]
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "src/__tests__",
+    "**/*.test.ts"
   ]
 }
