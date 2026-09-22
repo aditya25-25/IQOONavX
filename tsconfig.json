@@ -10,7 +10,8 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "noEmit": false
+    "noEmit": false,
+    "types": ["node", "jest"]
   },
   "include": ["src/**/*.ts"],
   "exclude": [

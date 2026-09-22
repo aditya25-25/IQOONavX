@@ -11,7 +11,18 @@ export class AppError extends Error {
     this.errorCode = errorCode;
     this.isOperational = true;
     this.details = details;
-    Error.captureStackTrace(this, this.constructor);
+
+    Object.setPrototypeOf(this, new.target.prototype);
+
+    if (
+      'captureStackTrace' in Error &&
+      typeof (Error as { captureStackTrace?: (target: object, constructorOpt?: Function) => void }).captureStackTrace === 'function'
+    ) {
+      (Error as { captureStackTrace: (target: object, constructorOpt?: Function) => void }).captureStackTrace(
+        this,
+        this.constructor
+      );
+    }
   }
 }
 
